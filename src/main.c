@@ -1,123 +1,123 @@
-/*
-Raylib example file.
-This is an example main file for a simple raylib project.
-Use this as a starting point or replace it with your code.
-
-by Jeffery Myers is marked with CC0 1.0. To view a copy of this license, visit https://creativecommons.org/publicdomain/zero/1.0/
-
-*/
-
 #include "raylib.h"
-#include <math.h>
+#include "raymath.h"
 
-#include "resource_dir.h"	// utility header for SearchAndSetResourceDir
+#define SQRT3 1.73205080757
 
-#define PHI 1.61803398875f
-#define E 0.46364760899965618f
-#define PI 3.141592653589f
+typedef struct {
+    int width, height;
+    float radius;
+    Vector2 corner;
+    //Vector2 points[100][100][2];
+} HexGrid;
 
-typedef struct  {
-	int edges[30][2];
-	Vector3 vertices[12];
-} Icosahedron;
-Vector3 sphericalToCartesian(Vector3 spherical) {
-	float radius = spherical.x;
-	float alpha = spherical.y;
-	float polar = spherical.z;
-	float x = radius * cosf(polar) * cosf(alpha);
-	float y = radius * sinf(polar);
-	float z = radius * cosf(polar) * sinf(alpha);
-	
-	return (Vector3) {x, y, z};
-}
-Icosahedron makeIcosahedron(float radius){
-	Icosahedron icosahedron;
-	Vector3 cart_vertices_middle[10];
-	Vector3 poles_cart[2] = { sphericalToCartesian((Vector3) { radius, 0, PI / 2}), sphericalToCartesian((Vector3) {radius, 0, -PI / 2}) };
-	icosahedron.vertices[10] = poles_cart[0];
-	icosahedron.vertices[11] = poles_cart[1];
-	for (int i = 0; i < 10; i++) {
-		Vector3 spherical = (Vector3){ radius, i * PI / 5, (1 - (2 * (i % 2))) * E };
-		cart_vertices_middle[i] = sphericalToCartesian(spherical);
-		icosahedron.vertices[i] = cart_vertices_middle[i];
-		Vector3 point = cart_vertices_middle[i];
-		printf("%f , %f , %f\n", point.x, point.y, point.z);
-	}
-	printf("%f , %f , %f\n", poles_cart[0].x, poles_cart[0].y, poles_cart[0].z);
-	printf("%f , %f , %f\n", poles_cart[1].x, poles_cart[1].y, poles_cart[0].z);
-	int index = 0;
-	for (int i = 0; i < 10; i++) {
-		icosahedron.edges[index][0] = i;
-		icosahedron.edges[index][1] = 10 + (i % 2);
-		index++;
-		icosahedron.edges[index][0] = i;
-		icosahedron.edges[index][1] = (i + 2) % 10;
-		index++;
-		icosahedron.edges[index][0] = i;
-		icosahedron.edges[index][1] = (i + 1) % 10;
-		index++;
-	}
-	return icosahedron;
-}
-drawIcosahedron(Icosahedron icosahedron){
-	Color color = RED;
-	for (int i = 0; i < 30; i++) {
-		Vector3 p1 = icosahedron.vertices[icosahedron.edges[i][0]];
-		Vector3 p2 = icosahedron.vertices[icosahedron.edges[i][1]];
-		//printf("%f , %f \n", p1, p2);
-		DrawLine3D(p1, p2, color);
-	}
-	/*for (int i = 0; i < 12; i++) {
-		DrawPoint3D(icosahedron.vertices[i], BLACK);
-	}*/
+HexGrid create_hexgrid(int w, int h, Vector2 c, float r) {
+    HexGrid grid;
+    grid.width = w;
+    grid.height = h;
+    grid.corner = c;
+    grid.radius = r;
+    /*for (int i = 0; i < w * 2; i++) {
+        for (int j = 0; j < h * 2; j++) {
+            for (int k = 0; k < 2; k++) {
+                grid.points[i][j][k] = (Vector2){ c.x + r * SQRT3 - (k % 2 * r * SQRT3 / 2), c.y + r };
+            }
+        }
+    }*/
+    return grid;
 }
 
+int arc_to_i(int a, int r, int c, int width) {
+    a + (r * 2) + (c * 2 * width);
+}
 
-int main ()
-{
-	// Tell the window to use vsync and work on high DPI displays
-	SetConfigFlags(FLAG_VSYNC_HINT | FLAG_WINDOW_HIGHDPI);
+Vector3 arc_to_cart(int a, int r, int c, int d) {
+    return (Vector3) {
+        d * SQRT3 * (c + (a / 2.0f)), 
+        0.0f, 
+        d * 3 * (r + (a / 2.0f))
+    };
+}
 
-	// Create the window and OpenGL context
-	InitWindow(1280, 800, "Map Game");
+Vector3 cart_to_arc(int x, int y,  int d) {
+    return (Vector3) {
+        0, 
+        (int)(y / (d * 3.0f)),
+        (int)(x / (d * SQRT3))
+    };
+}
 
-	Camera3D camera = { 0 };
-	camera.position = (Vector3){ 60, 60, 30 };  // Camera position
-	camera.target = (Vector3){ 0.0f, 0.0f, 0.0f };      // Camera looking at point
-	camera.up = (Vector3){ 0.0f, 1.0f, 0.0f };          // Camera up vector (rotation towards target)
-	camera.fovy = 45.0f;                                // Camera field-of-view Y
-	camera.projection = CAMERA_PERSPECTIVE;             // Camera mode type
-	Icosahedron icosahedron = makeIcosahedron(2);
-	DisableCursor();
-	
-	// game loop
-	while (!WindowShouldClose())		// run the loop untill the user presses ESCAPE or presses the Close button on the window
-	{
-		// drawing
-		BeginDrawing();
-		ClearBackground(RAYWHITE);
+//int draw_hexgrid_triangular(HexGrid grid, Vector3 center, float radius) {
+//    for (int i = 0; i < grid.height; i++) {
+//        for (int j = 0; j < grid.width; j++) {
+//            int center_x = j * 3 + 1;
+//            int center_y = i;
+//        }
+//    }
+//}
 
-		camera.position = (Vector3){ 0.0f, 2.0f, 10.0f };
-		camera.target = (Vector3){ 0.0f, 2.0f, 0.0f };
-		camera.up = (Vector3){ 0.0f, 1.0f, 0.0f };
-		camera.projection = CAMERA_PERSPECTIVE;
-		camera.fovy = 60.0f;
+int draw_hexgrid(HexGrid grid, Model hexmesh, Vector3 center, int radius) {
+    int count = 0;
+    for (int c = center.z; c < center.z + radius; c++) {
+        for (int r = center.y; r < center.y + radius; r++) {
+            for (int a = center.x; a < 2; a++) {
+                DrawModelWires(hexmesh, arc_to_cart(a, r, c, grid.radius), 1.0f, RED);
+                count++;
+            }
+        }
+    }
+}
 
-		UpdateCamera(&camera, CAMERA_THIRD_PERSON);
-		BeginMode3D(camera);
+int main(void) {
+    const int screenWidth = 800;
+    const int screenHeight = 450;
+    InitWindow(screenWidth, screenHeight, "raylib [core] example - 3d camera mode");
+    Model hexmesh = LoadModelFromMesh(GenMeshPoly(6, 1.0f));
+    Image checked = GenImageChecked(2, 2, 1, 1, RED, GREEN);
+    Texture2D texture = LoadTextureFromImage(checked);
+    UnloadImage(checked);
+    hexmesh.materials[0].maps[MATERIAL_MAP_DIFFUSE].texture = texture;
+    Camera3D camera = { 0 };
+    camera.position = (Vector3){ 0.0f, 10.0f, 10.0f };
+    camera.target = (Vector3){ 0.0f, 0.0f, 0.0f };
+    camera.up = (Vector3){ 0.0f, 1.0f, 0.0f };
+    camera.fovy = 45.0f;
+    camera.projection = CAMERA_PERSPECTIVE;
+    Vector3 cubePosition = { 0.0f, 0.0f, 0.0f };
+    SetTargetFPS(60);
+    HexGrid hex_grid = create_hexgrid(10, 10, (Vector2){ 0, 0 }, 1);
+    float zoom_rate = 5;
+    float change_rate = 0.1;
+    float zoom = 0;
+    Vector3 camera_momentum = (Vector3){ 0.0f, 0.0f, 0.0f };
+    while (!WindowShouldClose()) {
+        if (IsKeyDown(KEY_W)) {
+            camera_momentum.z -= change_rate;
+        }
+        if (IsKeyDown(KEY_A)) {
+            camera_momentum.x -= change_rate;
+        }
+        if (IsKeyDown(KEY_S)) {
+            camera_momentum.z += change_rate;
+        }
+        if (IsKeyDown(KEY_D)) {
+            camera_momentum.x += change_rate;
+        }
+        //zoom = GetMouseWheelMove();
+        camera.target = Vector3Add(camera.target, camera_momentum);
+        camera.position = Vector3Add(camera.position, camera_momentum);
+        camera.position.y += GetMouseWheelMove() * zoom_rate;
+        camera_momentum = Vector3Scale(camera_momentum, 0.50);
 
-		drawIcosahedron(icosahedron);
+        BeginDrawing();
+        ClearBackground(RAYWHITE);
+        BeginMode3D(camera);
+        draw_hexgrid(hex_grid, hexmesh, cart_to_arc(0, 0, 1), 4);
+        EndMode3D();
+        DrawText("Welcome to the third dimension!", 10, 40, 20, DARKGRAY);
+        DrawFPS(10, 10);
+        EndDrawing();
+    }
 
-		EndMode3D();
-
-		// end the frame and get ready for the next one  (display frame, poll input, etc...)
-		EndDrawing();
-	}
-
-	// cleanup
-	// unload our texture so it can be cleaned up
-
-	// destroy the window and cleanup the OpenGL context
-	CloseWindow();
-	return 0;
+    CloseWindow();
+    return 0;
 }
